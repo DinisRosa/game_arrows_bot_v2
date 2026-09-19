@@ -182,6 +182,59 @@ class VisionDetector:
 
         return refined_heads
 
+    def build_grid(
+        self, frame: np.ndarray, geom: GridGeometry, heads: List[ArrowHead]
+    ) -> List[List[Cell]]:
+        """
+        Step 3.3: Constructs symbolic grid mapping cell occupancy and arrow ownership (arrow_id).
+        Traces each snake arrow body from head to tail along connected grid segments.
+        """
+        h, w = frame.shape[:2]
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        _, dark_mask = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY_INV)
+        dark_mask[self.mask.forbidden_mask] = 0
+
+        pitch = geom.pitch
+
+        def grid_to_px(r: int, c: int) -> Tuple[int, int]:
+            return geom.x0 + c * pitch, geom.y0 + r * pitch
+
+        grid = [[Cell(cell_type=CellType.EMPTY) for _ in range(geom.cols)] for _ in range(geom.rows)]
+
+        for head in heads:
+            r, c = head.row, head.col
+            grid[r][c].cell_type = CellType.OCCUPIED
+            grid[r][c].arrow_id = head.arrow_id
+
+            curr_r, curr_c = r, c
+            visited = set([(curr_r, curr_c)])
+
+            while True:
+                next_cell = None
+                for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    nr, nc = curr_r + dr, curr_c + dc
+                    if (nr, nc) in visited:
+                        continue
+                    if 0 <= nr < geom.rows and 0 <= nc < geom.cols:
+                        x1, y1 = grid_to_px(curr_r, curr_c)
+                        x2, y2 = grid_to_px(nr, nc)
+                        mid_x, mid_y = (x1 + x2) // 2, (y1 + y2) // 2
+
+                        if 0 <= mid_y < h and 0 <= mid_x < w:
+                            if dark_mask[mid_y, mid_x] > 0:
+                                next_cell = (nr, nc)
+                                break
+
+                if next_cell is None:
+                    break
+
+                curr_r, curr_c = next_cell
+                visited.add((curr_r, curr_c))
+                grid[curr_r][curr_c].cell_type = CellType.OCCUPIED
+                grid[curr_r][curr_c].arrow_id = head.arrow_id
+
+        return grid
+
     def draw_grid_debug(self, frame: np.ndarray, geom: GridGeometry) -> np.ndarray:
         """
         Draws grid lines and cell intersections over the frame for visual verification.
@@ -220,10 +273,42 @@ class VisionDetector:
             x, y = head.x_px, head.y_px
             cv2.circle(debug_img, (x, y), 8, color, -1)
 
-            # Draw directional tip line
             dx, dy = head.direction.vector
             end_x = x + dx * 15
             end_y = y + dy * 15
             cv2.arrowedLine(debug_img, (x, y), (end_x, end_y), (255, 255, 255), 2, tipLength=0.4)
+
+        return debug_img
+
+    def draw_full_grid_debug(
+        self, frame: np.ndarray, geom: GridGeometry, grid: List[List[Cell]], heads: List[ArrowHead]
+    ) -> np.ndarray:
+        """
+        Step 3.3 Debug: Renders full symbolic grid with distinct colors assigned per arrow_id.
+        """
+        debug_img = frame.copy()
+        pitch = geom.pitch
+
+        # Generate distinct colors per arrow_id
+        np.random.seed(42)
+        unique_ids = max((cell.arrow_id for row in grid for cell in row if cell.arrow_id), default=0)
+        colors = {
+            aid: tuple(map(int, np.random.randint(50, 245, size=3)))
+            for aid in range(1, unique_ids + 1)
+        }
+
+        for r_idx, row in enumerate(grid):
+            for c_idx, cell in enumerate(row):
+                x = geom.x0 + c_idx * pitch
+                y = geom.y0 + r_idx * pitch
+
+                if cell.cell_type == CellType.OCCUPIED and cell.arrow_id:
+                    color = colors[cell.arrow_id]
+                    cv2.circle(debug_img, (x, y), 6, color, -1)
+
+        # Overlay heads
+        for head in heads:
+            x, y = head.x_px, head.y_px
+            cv2.circle(debug_img, (x, y), 9, (255, 255, 255), 2)
 
         return debug_img
