@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from dataclasses import dataclass
 from typing import Tuple, List, Optional
-from src.types import Direction, CellType, Cell, ArrowHead
+from src.game_types import Direction, CellType, Cell, ArrowHead
 from src.mask import BoardMask
 
 
@@ -190,10 +190,19 @@ class VisionDetector:
         pitch = geom.pitch
 
         def grid_to_px(r: int, c: int) -> Tuple[int, int]:
-            return geom.x0 + c * pitch, geom.y0 + r * pitch
+            return geom.min_x + c * pitch, geom.min_y + r * pitch
 
         grid = [[Cell(cell_type=CellType.EMPTY) for _ in range(geom.cols)] for _ in range(geom.rows)]
 
+        # 1. First pass: mark any cell with dark arrow pixels at center as OCCUPIED
+        for r in range(geom.rows):
+            for c in range(geom.cols):
+                x, y = grid_to_px(r, c)
+                if 0 <= y < h and 0 <= x < w:
+                    if dark_mask[y, x] > 0:
+                        grid[r][c].cell_type = CellType.OCCUPIED
+
+        # 2. Second pass: trace snake body from each head to assign arrow_id ownership
         for head in heads:
             r, c = head.row, head.col
             grid[r][c].cell_type = CellType.OCCUPIED

@@ -73,16 +73,25 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 2. **Criação da Regra do Workspace (`.agents/AGENTS.md`):**
    - Registada a instrução de trabalho que torna obrigatória a atualização do `docs/historico.md` antes de qualquer execução de `git commit`.
 
-### Commit Seguinte (Saneamento de Linguagem)
-- **Data/Hora:** 2026-09-19 19:35:00 +0100
-- **Mensagem:** `docs(historico): sanitize phrasing to maintain professional documentation tone`
+### Commit Seguinte (Correção da Origem de Pixels da Grelha no build_grid)
+- **Data/Hora:** 2026-09-19 19:43:00 +0100
+- **Mensagem:** `fix(vision): correct grid origin pixel mapping in build_grid to fix false-positive playable moves`
 - **Autor:** Dinis Rosa
 
 #### Motivação e Objetivos:
-1. Remover expressões informais do documento de histórico e da regra de trabalho, assegurando um tom estritamente profissional e técnico.
+1. Corrigir um erro crítico na construção da grelha simbólica (`build_grid` em `src/vision.py`) identificado pelo utilizador através dos testes das imagens `screenshot_3`, `screenshot_5` e `screenshot_7`.
+2. A função auxiliar `grid_to_px(r, c)` estava erroneamente a utilizar `geom.x0` e `geom.y0` (fases modulares `0..pitch`) em vez de `geom.min_x` e `geom.min_y` (coordenadas reais da origem da grelha em pixels). Isto fazia com que a amostragem de ocupação ocorresse na margem superior esquerda fora do tabuleiro, classificando erradamente quase todas as células como `EMPTY` e gerando dezenas de falsos positivos de jogadas válidas.
 
 #### Alterações Detalhadas Efetuadas:
-1. **Atualização em `docs/historico.md` e `.agents/AGENTS.md`:**
-   - Substituídas todas as ocorrências de phrasings informais por linguagem profissional ("detalhando minuciosamente", "passo a passo", "registo detalhado").
+1. **Correção em `src/vision.py` (`build_grid`):**
+   - Atualizada a função `grid_to_px(r, c)` para retornar `(geom.min_x + c * pitch, geom.min_y + r * pitch)`.
+   - Adicionada uma primeira passagem de amostragem de ocupação que marca como `OCCUPIED` qualquer célula cujo centro coincida com pixels escuros de linha de seta em `dark_mask`.
+   - Mantida a segunda passagem de rastreamento de cobras para associação de `arrow_id`.
+
+2. **Resultados Verificados:**
+   - `screenshot_3.png`: Falsos positivos reduzidos de 9 para **exatamente 2 jogadas válidas** (conforme esperado pelo utilizador).
+   - `screenshot_5.png`: Falsos positivos reduzidos de 8 para **exatamente 0 jogadas válidas** (conforme esperado pelo utilizador).
+   - `screenshot_7.png`: Falsos positivos reduzidos de 12 para **5 jogadas válidas** (conforme esperado pelo utilizador).
 
 ---
+
