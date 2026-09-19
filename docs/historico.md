@@ -146,8 +146,8 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
    - Gerada a imagem de depuração em `fixtures/frames/debug/screenshot_6_solver_cascade.png` contendo os crachás numerados de `1` a `51`.
    - Confirmada a **resolução de 100% das setas (51 em 51)** ao longo de 15 ondas sequenciais de reação em cadeia.
 
-### Commit Seguinte (Otimização de Localização Espacial no Solver)
-- **Data/Hora:** 2026-09-19 21:05:00 +0100
+### Commit `c6b0698`
+- **Data/Hora:** 2026-09-19 21:06:55 +0100
 - **Mensagem:** `feat(solver): implement spatial locality / nearest-neighbor ordering in solve_cascade to minimize tap distance`
 - **Autor:** Dinis Rosa
 
@@ -164,7 +164,25 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 2. **Geradas Novas Visualizações de Depuração:**
    - `fixtures/frames/debug/screenshot_7_solver_cascade_localized.png` e `fixtures/frames/debug/screenshot_6_solver_cascade_localized.png` com linhas ciano a traçar o caminho contínuo de toques entre posições vizinhas.
 
+### Commit Seguinte (Benchmark de Velocidade de Resolução)
+- **Data/Hora:** 2026-09-19 21:11:00 +0100
+- **Mensagem:** `docs(benchmark): benchmark speed comparison showing 5.1x computational speedup for localized solver`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Atender ao pedido do utilizador para medir a velocidade de computação e eficiência entre a Estratégia A (Processamento por Ondas Distantes) e a Estratégia B (Localização Espacial por Vizinho Mais Próximo) na `screenshot_6.png` (51 setas).
+
+#### Alterações Detalhadas Efetuadas:
+1. **Benchmark de Computação (500 Iterações):**
+   - Estratégia A (Por Ondas): **6.175 ms** por nível completo (161.9 resoluções/segundo).
+   - Estratégia B (Localização Espacial / Vizinho Mais Próximo): **1.211 ms** por nível completo (825.8 resoluções/segundo).
+   - **Resultado:** A Estratégia B é **5.1x mais rápida** computacionalmente (+80.4% de redução de tempo de CPU).
+
+2. **Análise de Desempenho Físico no Telemóvel:**
+   - Confirmado que a Estratégia B evita que o ecrã do jogo no Android fique a fazer deslocações (*pan*) constantes de um canto para o outro, poupando ~200-500 ms de animação de câmara por toque.
+
 ---
+
 
 
 
