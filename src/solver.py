@@ -1,5 +1,5 @@
 from typing import List
-from src.types import Direction, CellType, Cell, ArrowHead, Move
+from src.game_types import Direction, CellType, Cell, ArrowHead, Move
 
 
 class Solver:
@@ -51,3 +51,42 @@ class Solver:
                 )
 
         return moves
+
+    @staticmethod
+    def solve_cascade(grid: List[List[Cell]], heads: List[ArrowHead]) -> List[Move]:
+        """
+        Simulates a multi-step cascade solution, returning the complete ordered sequence of moves
+        as arrows are removed and new arrows become unblocked wave by wave.
+        """
+        rows = len(grid)
+        if rows == 0:
+            return []
+        cols = len(grid[0])
+        if cols == 0:
+            return []
+
+        # Create deep copy of cell grid so we don't mutate original
+        grid_copy = [[Cell(cell_type=cell.cell_type, arrow_id=cell.arrow_id) for cell in row] for row in grid]
+        remaining_heads = list(heads)
+        cascade_sequence: List[Move] = []
+
+        while True:
+            moves = Solver.playable_moves(grid_copy, remaining_heads)
+            if not moves:
+                break
+
+            for move in moves:
+                cascade_sequence.append(move)
+
+                # Clear all cells belonging to this arrow from grid_copy
+                for r in range(rows):
+                    for c in range(cols):
+                        if grid_copy[r][c].arrow_id == move.arrow_id:
+                            grid_copy[r][c].cell_type = CellType.EMPTY
+                            grid_copy[r][c].arrow_id = None
+
+                # Remove from remaining heads
+                remaining_heads = [h for h in remaining_heads if h.arrow_id != move.arrow_id]
+
+        return cascade_sequence
+

@@ -93,8 +93,8 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
    - `screenshot_5.png`: Falsos positivos reduzidos de 8 para **exatamente 0 jogadas válidas** (conforme esperado pelo utilizador).
    - `screenshot_7.png`: Falsos positivos reduzidos de 12 para **5 jogadas válidas** (conforme esperado pelo utilizador).
 
-### Commit Seguinte (Organização da Pasta `fixtures/frames/`)
-- **Data/Hora:** 2026-09-19 19:47:00 +0100
+### Commit `38e7546`
+- **Data/Hora:** 2026-09-19 19:48:20 +0100
 - **Mensagem:** `refactor(fixtures): reorganize fixtures/frames into dedicated subdirectories`
 - **Autor:** Dinis Rosa
 
@@ -111,6 +111,28 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 2. **Atualização de Módulos e Scripts:**
    - Atualizado `src/bot.py` para utilizar o novo caminho `fixtures/frames/screenshots/screenshot_1.png` como fallback do leitor offline.
 
+### Commit Seguinte (Resolução em Cascata e Overlay Numerado no screenshot_7)
+- **Data/Hora:** 2026-09-19 19:54:00 +0100
+- **Mensagem:** `feat(solver): implement solve_cascade multi-step resolution and generate numbered sequence overlay on screenshot_7`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Atender ao pedido do utilizador para simular e visualizar a resolução em cascata (sequência ordenada de remoção de setas 1, 2, 3...) sobre a `screenshot_7.png`.
+2. Implementar no `Solver` a capacidade de simular jogadas sequenciais em ondas, onde a remoção de uma seta desbloqueia as setas que estavam atrás dela.
+
+#### Alterações Detalhadas Efetuadas:
+1. **Método `solve_cascade` em `src/solver.py`:**
+   - Adicionada a função estática `Solver.solve_cascade(grid, heads)` que executa um loop de simulação até não restarem mais jogadas possíveis.
+   - Em cada onda, limpa do mapa as células das setas removidas e re-avalia quais as novas setas que ficaram desimpedidas.
+
+2. **Geração da Visualização `screenshot_7_solver_cascade.png`:**
+   - Gerada a imagem de depuração em `fixtures/frames/debug/screenshot_7_solver_cascade.png` desenhando crachás circulares azuis com numeração sequencial (`1`, `2`, `3`, ..., `10`) indicando a ordem exata de remoção das 10 setas resolvíveis nesta secção do tabuleiro.
+
+3. **Validação de Testes:**
+   - Adicionado o teste unitário `test_solve_cascade` em `tests/test_solver.py`.
+   - Executada a suite com 7 testes unitários (100% OK).
+
 ---
+
 
 
