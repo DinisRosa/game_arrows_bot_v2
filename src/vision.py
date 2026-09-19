@@ -154,7 +154,7 @@ class VisionDetector:
             if patch.shape != (2 * radius + 1, 2 * radius + 1):
                 continue
 
-            dx, dy = cand.direction.vector
+            dx, dy = cand.direction.pixel_delta
             tip_pt = (radius + dx * (radius // 2), radius + dy * (radius // 2))
             body_pt = (radius - dx * (radius // 2), radius - dy * (radius // 2))
 
@@ -273,10 +273,11 @@ class VisionDetector:
             x, y = head.x_px, head.y_px
             cv2.circle(debug_img, (x, y), 8, color, -1)
 
-            dx, dy = head.direction.vector
-            end_x = x + dx * 15
-            end_y = y + dy * 15
-            cv2.arrowedLine(debug_img, (x, y), (end_x, end_y), (255, 255, 255), 2, tipLength=0.4)
+            # Draw arrow line pointing in actual direction of head tip (pixel_delta dx, dy)
+            dx, dy = head.direction.pixel_delta
+            end_x = x + dx * 20
+            end_y = y + dy * 20
+            cv2.arrowedLine(debug_img, (x, y), (end_x, end_y), (255, 255, 255), 3, tipLength=0.4)
 
         return debug_img
 
@@ -289,7 +290,6 @@ class VisionDetector:
         debug_img = frame.copy()
         pitch = geom.pitch
 
-        # Generate distinct colors per arrow_id
         np.random.seed(42)
         unique_ids = max((cell.arrow_id for row in grid for cell in row if cell.arrow_id), default=0)
         colors = {
@@ -306,7 +306,6 @@ class VisionDetector:
                     color = colors[cell.arrow_id]
                     cv2.circle(debug_img, (x, y), 6, color, -1)
 
-        # Overlay heads
         for head in heads:
             x, y = head.x_px, head.y_px
             cv2.circle(debug_img, (x, y), 9, (255, 255, 255), 2)

@@ -9,8 +9,8 @@ class Direction(Enum):
     RIGHT = "RIGHT"
 
     @property
-    def vector(self) -> Tuple[int, int]:
-        """Returns (delta_row, delta_col) for grid movement."""
+    def grid_delta(self) -> Tuple[int, int]:
+        """Returns (delta_row, delta_col) for matrix indexing."""
         if self == Direction.UP:
             return (-1, 0)
         elif self == Direction.DOWN:
@@ -19,6 +19,19 @@ class Direction(Enum):
             return (0, -1)
         elif self == Direction.RIGHT:
             return (0, 1)
+        raise ValueError(f"Unknown direction: {self}")
+
+    @property
+    def pixel_delta(self) -> Tuple[int, int]:
+        """Returns (dx, dy) for image pixel coordinates."""
+        if self == Direction.UP:
+            return (0, -1)
+        elif self == Direction.DOWN:
+            return (0, 1)
+        elif self == Direction.LEFT:
+            return (-1, 0)
+        elif self == Direction.RIGHT:
+            return (1, 0)
         raise ValueError(f"Unknown direction: {self}")
 
 class CellType(Enum):
@@ -39,11 +52,3 @@ class ArrowHead:
     direction: Direction
     x_px: int
     y_px: int
-
-@dataclass
-class Move:
-    arrow_id: int
-    row: int
-    col: int
-    tap_x: int
-    tap_y: int
