@@ -111,8 +111,8 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 2. **Atualização de Módulos e Scripts:**
    - Atualizado `src/bot.py` para utilizar o novo caminho `fixtures/frames/screenshots/screenshot_1.png` como fallback do leitor offline.
 
-### Commit Seguinte (Resolução em Cascata e Overlay Numerado no screenshot_7)
-- **Data/Hora:** 2026-09-19 19:54:00 +0100
+### Commit `b3971d8`
+- **Data/Hora:** 2026-09-19 19:55:25 +0100
 - **Mensagem:** `feat(solver): implement solve_cascade multi-step resolution and generate numbered sequence overlay on screenshot_7`
 - **Autor:** Dinis Rosa
 
@@ -132,7 +132,22 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
    - Adicionado o teste unitário `test_solve_cascade` em `tests/test_solver.py`.
    - Executada a suite com 7 testes unitários (100% OK).
 
+### Commit Seguinte (Resolução Completa 100% em Cascata no screenshot_6)
+- **Data/Hora:** 2026-09-19 19:58:00 +0100
+- **Mensagem:** `test(solver): verify 100% cascade resolution on screenshot_6 with 51 solved arrows in 15 waves`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Atender ao pedido do utilizador para simular o algoritmo de resolução em cascata sobre o tabuleiro `screenshot_6.png`.
+2. Validar se o solver consegue resolver a totalidade do nível de forma autónoma sem ficar preso.
+
+#### Alterações Detalhadas Efetuadas:
+1. **Simulação e Geração do Overlay `screenshot_6_solver_cascade.png`:**
+   - Gerada a imagem de depuração em `fixtures/frames/debug/screenshot_6_solver_cascade.png` contendo os crachás numerados de `1` a `51`.
+   - Confirmada a **resolução de 100% das setas (51 em 51)** ao longo de 15 ondas sequenciais de reação em cadeia.
+
 ---
+
 
 
 
