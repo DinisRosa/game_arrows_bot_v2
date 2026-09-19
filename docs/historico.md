@@ -132,8 +132,8 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
    - Adicionado o teste unitário `test_solve_cascade` em `tests/test_solver.py`.
    - Executada a suite com 7 testes unitários (100% OK).
 
-### Commit Seguinte (Resolução Completa 100% em Cascata no screenshot_6)
-- **Data/Hora:** 2026-09-19 19:58:00 +0100
+### Commit `cfd0bbf`
+- **Data/Hora:** 2026-09-19 19:59:11 +0100
 - **Mensagem:** `test(solver): verify 100% cascade resolution on screenshot_6 with 51 solved arrows in 15 waves`
 - **Autor:** Dinis Rosa
 
@@ -146,7 +146,26 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
    - Gerada a imagem de depuração em `fixtures/frames/debug/screenshot_6_solver_cascade.png` contendo os crachás numerados de `1` a `51`.
    - Confirmada a **resolução de 100% das setas (51 em 51)** ao longo de 15 ondas sequenciais de reação em cadeia.
 
+### Commit Seguinte (Otimização de Localização Espacial no Solver)
+- **Data/Hora:** 2026-09-19 21:05:00 +0100
+- **Mensagem:** `feat(solver): implement spatial locality / nearest-neighbor ordering in solve_cascade to minimize tap distance`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Atender ao pedido do utilizador para otimizar a ordem de seleção de jogadas quando existem múltiplas setas jogáveis ao mesmo tempo.
+2. Evitar que o bot salte de forma errática entre cantos distantes do ecrã, reduzindo a distância percorrida entre toques e minimizando a necessidade de deslocações (*pan*) em tabuleiros grandes.
+
+#### Alterações Detalhadas Efetuadas:
+1. **Otimização em `src/solver.py` (`solve_cascade`):**
+   - Atualizado o loop de simulação para guardar a posição do último toque efetuado `last_pos = (tap_x, tap_y)`.
+   - Quando existem múltiplas setas jogáveis, o solver escolhe a seta jogável com a **menor distância Euclidiana** relativamente ao toque anterior (heurística de *Nearest-Neighbor*).
+   - Isso aglomera a remoção de setas por blocos regionais contíguos de forma suave e contínua.
+
+2. **Geradas Novas Visualizações de Depuração:**
+   - `fixtures/frames/debug/screenshot_7_solver_cascade_localized.png` e `fixtures/frames/debug/screenshot_6_solver_cascade_localized.png` com linhas ciano a traçar o caminho contínuo de toques entre posições vizinhas.
+
 ---
+
 
 
 
