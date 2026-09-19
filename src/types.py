@@ -52,3 +52,11 @@ class ArrowHead:
     direction: Direction
     x_px: int
     y_px: int
+
+@dataclass
+class Move:
+    arrow_id: int
+    head: ArrowHead
+    tap_x_px: int
+    tap_y_px: int
+
