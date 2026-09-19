@@ -2,7 +2,7 @@
 
 Este documento serve como enciclopédia e registo cronológico detalhado de todas as alterações efetuadas no repositório `Auto-ARROWS-V2`.
 
-> **Regra Obrigatória:** Antes de cada novo `git commit`, este ficheiro deve ser atualizado com um novo registo no final, detalhando tintim por tintim as alterações, ficheiros modificados, motivação técnica e resultados de testes efetuados nesse commit.
+> **Regra Obrigatória:** Antes de cada novo `git commit`, este ficheiro deve ser atualizado com um novo registo no final, detalhando minuciosamente as alterações, ficheiros modificados, motivação técnica e resultados de testes efetuados nesse commit.
 
 ---
 
@@ -17,10 +17,12 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 | `2917635` | 2026-09-19 19:13:55 +0100 | Dinis Rosa | Fix Direction pixel_delta mappings and directional arrow debug indicators |
 | `ef801a8` | 2026-09-19 19:23:06 +0100 | Dinis Rosa | fix(vision): discriminate true arrowheads from flat tail ends using dynamic wing width thresholding |
 | `2f2afad` | 2026-09-19 19:26:50 +0100 | Dinis Rosa | feat(solver): implement pure deterministic Solver class with 100% unit test coverage |
+| `a27c4e4` | 2026-09-19 19:29:28 +0100 | Dinis Rosa | feat(bot): rename types to game_types, implement Actuator and unified AutoArrowsBot main loop |
+| `40511fb` | 2026-09-19 19:33:03 +0100 | Dinis Rosa | docs(historico): create commit history documentation encyclopedia and pre-commit workflow rule |
 
 ---
 
-## 🔍 Registo Detalhado de Commits (Tintim por Tintim)
+## 🔍 Registo Detalhado de Commits
 
 ### Commit `a27c4e4`
 - **Data/Hora:** 2026-09-19 19:29:28 +0100
@@ -31,7 +33,7 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 1. Concluir as Fases 5 e 6 da reconstrução do Auto-ARROWS-V2: Atuação de toques via ADB e Loop Principal de Jogo (`AutoArrowsBot`).
 2. Resolver um conflito de importação do Python no qual o ficheiro local `src/types.py` estava a ocultar (`shadowing`) o módulo padrão `types` da biblioteca standard do Python (que causava `ImportError: cannot import name 'GenericAlias' from 'types'`).
 
-#### Alterações Detalhadas Efetuadas (Tintim por Tintim):
+#### Alterações Detalhadas Efetuadas:
 1. **Renomeação de Módulo:**
    - O ficheiro `src/types.py` foi renomeado para `src/game_types.py`.
    - Adicionada a classe `@dataclass class Move` em `src/game_types.py` contendo `arrow_id`, `head`, `tap_x_px`, `tap_y_px`.
@@ -53,23 +55,34 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
    - Executada a suite de testes com 6 testes unitários a passar (100% OK).
    - Executado o bot em modo `--dry-run` sobre a captura `screenshot_1.png`: 57 cabeças detetadas $\rightarrow$ 13 jogadas jogáveis calculadas e simuladas com sucesso.
 
-### Commit Seguinte (Ficheiro de Histórico)
-- **Data/Hora:** 2026-09-19 19:32:00 +0100
+### Commit `40511fb`
+- **Data/Hora:** 2026-09-19 19:33:03 +0100
 - **Mensagem:** `docs(historico): create commit history documentation encyclopedia and pre-commit workflow rule`
 - **Autor:** Dinis Rosa
 
 #### Motivação e Objetivos:
 1. Atender ao pedido do utilizador de manter uma enciclopédia/documentação viva de commits (`docs/historico.md`).
-2. Garantir que todas as alterações futuras sejam registadas detalhadamente ("tintim por tintim") antes de cada commit.
+2. Garantir que todas as alterações futuras sejam registadas detalhadamente antes de cada commit.
 
-#### Alterações Detalhadas Efetuadas (Tintim por Tintim):
+#### Alterações Detalhadas Efetuadas:
 1. **Criação do Ficheiro `docs/historico.md`:**
-   - Criada a tabela cronológica com os 7 commits anteriores (Hash, Data/Hora ISO, Autor, Mensagem).
+   - Criada a tabela cronológica com os commits anteriores (Hash, Data/Hora ISO, Autor, Mensagem).
    - Adicionada a secção de registo detalhado para o commit `a27c4e4` (bot, actuator, game_types).
    - Adicionada a regra explícita de atualização obrigatória antes de cada novo commit.
 
 2. **Criação da Regra do Workspace (`.agents/AGENTS.md`):**
    - Registada a instrução de trabalho que torna obrigatória a atualização do `docs/historico.md` antes de qualquer execução de `git commit`.
 
----
+### Commit Seguinte (Saneamento de Linguagem)
+- **Data/Hora:** 2026-09-19 19:35:00 +0100
+- **Mensagem:** `docs(historico): sanitize phrasing to maintain professional documentation tone`
+- **Autor:** Dinis Rosa
 
+#### Motivação e Objetivos:
+1. Remover expressões informais do documento de histórico e da regra de trabalho, assegurando um tom estritamente profissional e técnico.
+
+#### Alterações Detalhadas Efetuadas:
+1. **Atualização em `docs/historico.md` e `.agents/AGENTS.md`:**
+   - Substituídas todas as ocorrências de phrasings informais por linguagem profissional ("detalhando minuciosamente", "passo a passo", "registo detalhado").
+
+---
