@@ -73,8 +73,8 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 2. **Criação da Regra do Workspace (`.agents/AGENTS.md`):**
    - Registada a instrução de trabalho que torna obrigatória a atualização do `docs/historico.md` antes de qualquer execução de `git commit`.
 
-### Commit Seguinte (Correção da Origem de Pixels da Grelha no build_grid)
-- **Data/Hora:** 2026-09-19 19:43:00 +0100
+### Commit `a9c8fd2`
+- **Data/Hora:** 2026-09-19 19:44:07 +0100
 - **Mensagem:** `fix(vision): correct grid origin pixel mapping in build_grid to fix false-positive playable moves`
 - **Autor:** Dinis Rosa
 
@@ -93,5 +93,24 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
    - `screenshot_5.png`: Falsos positivos reduzidos de 8 para **exatamente 0 jogadas válidas** (conforme esperado pelo utilizador).
    - `screenshot_7.png`: Falsos positivos reduzidos de 12 para **5 jogadas válidas** (conforme esperado pelo utilizador).
 
+### Commit Seguinte (Organização da Pasta `fixtures/frames/`)
+- **Data/Hora:** 2026-09-19 19:47:00 +0100
+- **Mensagem:** `refactor(fixtures): reorganize fixtures/frames into dedicated subdirectories`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Atender à solicitação do utilizador para organizar a pasta `fixtures/frames/`, que acumulava dezenas de imagens misturadas de capturas originais, visualizações de depuração e modelos.
+2. Facilitar a navegação e a clareza sobre o propósito de cada ficheiro de imagem no repositório.
+
+#### Alterações Detalhadas Efetuadas:
+1. **Reestruturação de Subpastas em `fixtures/frames/`:**
+   - Criada a subpasta `fixtures/frames/screenshots/` contendo as capturas brutas do tabuleiro (`screenshot_1.png` a `screenshot_7.png`).
+   - Criada a subpasta `fixtures/frames/debug/` contendo as imagens geradas com overlays de depuração (`debug_*.png`, `overlay_verification.png`, `test_scrcpy_output.png`).
+   - Criada a subpasta `fixtures/frames/templates/` contendo os templates de setas (`template_*.png`).
+
+2. **Atualização de Módulos e Scripts:**
+   - Atualizado `src/bot.py` para utilizar o novo caminho `fixtures/frames/screenshots/screenshot_1.png` como fallback do leitor offline.
+
 ---
+
 

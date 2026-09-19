@@ -96,7 +96,7 @@ def main():
     elif args.live:
         frame_source = ScrcpyFrameSource()
     else:
-        frame_source = FileFrameSource("fixtures/frames/screenshot_1.png")
+        frame_source = FileFrameSource("fixtures/frames/screenshots/screenshot_1.png")
 
     actuator = Actuator(dry_run=args.dry_run)
     bot = AutoArrowsBot(frame_source=frame_source, actuator=actuator)
