@@ -33,7 +33,6 @@ class VisionDetector:
         Works across all zoom levels and pan positions.
         """
         h, w = frame.shape[:2]
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # Apply UI mask - replace forbidden areas with white (255)
         masked_gray = self.mask.apply_mask(frame, fill_color=(255, 255, 255))
@@ -65,7 +64,6 @@ class VisionDetector:
         x_coords = np.arange(x0, w, pitch)
         y_coords = np.arange(y0, h, pitch)
 
-        # Filter out grid lines outside playable area
         valid_x = [x for x in x_coords if any(self.mask.is_allowed_tap(x, y) for y in range(0, h, 100))]
         valid_y = [y for y in y_coords if any(self.mask.is_allowed_tap(x, y) for x in range(0, w, 100))]
 
@@ -89,6 +87,101 @@ class VisionDetector:
             max_y=max_y
         )
 
+    def detect_arrow_heads(self, frame: np.ndarray, geom: GridGeometry) -> List[ArrowHead]:
+        """
+        Step 3.2: Detects all true arrow heads and classifies their pointing directions.
+        Distinguishes sharp triangular tips from flat line tail ends using width gradient analysis.
+        """
+        h, w = frame.shape[:2]
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        _, dark_mask = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY_INV)
+        dark_mask[self.mask.forbidden_mask] = 0
+
+        pitch = geom.pitch
+        radius = pitch // 2
+
+        candidates: List[ArrowHead] = []
+
+        # 1. Candidate extraction: scan grid intersections with 1 edge connection
+        for row_idx, y in enumerate(range(geom.y0, h - radius, pitch)):
+            for col_idx, x in enumerate(range(geom.x0, w - radius, pitch)):
+                if not self.mask.is_allowed_tap(x, y):
+                    continue
+
+                patch = dark_mask[y - radius : y + radius + 1, x - radius : x + radius + 1]
+                if patch.shape != (2 * radius + 1, 2 * radius + 1):
+                    continue
+
+                c_y, c_x = radius, radius
+                if patch[c_y, c_x] == 0:
+                    continue
+
+                t_edge = bool(np.sum(patch[0, :]) > 0)
+                b_edge = bool(np.sum(patch[-1, :]) > 0)
+                l_edge = bool(np.sum(patch[:, 0]) > 0)
+                r_edge = bool(np.sum(patch[:, -1]) > 0)
+
+                edges_count = int(t_edge) + int(b_edge) + int(l_edge) + int(r_edge)
+
+                if edges_count == 1:
+                    direction: Optional[Direction] = None
+                    if b_edge and not (t_edge or l_edge or r_edge):
+                        direction = Direction.UP
+                    elif t_edge and not (b_edge or l_edge or r_edge):
+                        direction = Direction.DOWN
+                    elif r_edge and not (l_edge or t_edge or b_edge):
+                        direction = Direction.LEFT
+                    elif l_edge and not (r_edge or t_edge or b_edge):
+                        direction = Direction.RIGHT
+
+                    if direction:
+                        candidates.append(
+                            ArrowHead(
+                                arrow_id=0,
+                                row=row_idx,
+                                col=col_idx,
+                                direction=direction,
+                                x_px=x,
+                                y_px=y,
+                            )
+                        )
+
+        # 2. Refinement: width gradient check to filter out flat tail ends
+        refined_heads: List[ArrowHead] = []
+        for cand in candidates:
+            x, y = cand.x_px, cand.y_px
+            patch = dark_mask[y - radius : y + radius + 1, x - radius : x + radius + 1]
+            if patch.shape != (2 * radius + 1, 2 * radius + 1):
+                continue
+
+            dx, dy = cand.direction.vector
+            tip_pt = (radius + dx * (radius // 2), radius + dy * (radius // 2))
+            body_pt = (radius - dx * (radius // 2), radius - dy * (radius // 2))
+
+            px_dir, py_dir = -dy, dx
+
+            tip_w = sum(
+                1 for k in range(-6, 7)
+                if 0 <= int(tip_pt[0] + k * px_dir) < patch.shape[1]
+                and 0 <= int(tip_pt[1] + k * py_dir) < patch.shape[0]
+                and patch[int(tip_pt[1] + k * py_dir), int(tip_pt[0] + k * px_dir)] > 0
+            )
+            body_w = sum(
+                1 for k in range(-6, 7)
+                if 0 <= int(body_pt[0] + k * px_dir) < patch.shape[1]
+                and 0 <= int(body_pt[1] + k * py_dir) < patch.shape[0]
+                and patch[int(body_pt[1] + k * py_dir), int(body_pt[0] + k * px_dir)] > 0
+            )
+
+            if body_w > tip_w:
+                refined_heads.append(cand)
+
+        # 3. Assign unique sequential IDs to true arrowheads
+        for idx, head in enumerate(refined_heads):
+            head.arrow_id = idx + 1
+
+        return refined_heads
+
     def draw_grid_debug(self, frame: np.ndarray, geom: GridGeometry) -> np.ndarray:
         """
         Draws grid lines and cell intersections over the frame for visual verification.
@@ -96,18 +189,41 @@ class VisionDetector:
         debug_img = frame.copy()
         h, w = frame.shape[:2]
 
-        # Draw vertical grid lines
         for x in range(geom.x0, w, geom.pitch):
             cv2.line(debug_img, (x, 0), (x, h), (0, 255, 0), 1)
 
-        # Draw horizontal grid lines
         for y in range(geom.y0, h, geom.pitch):
             cv2.line(debug_img, (0, y), (w, y), (0, 255, 0), 1)
 
-        # Draw cell intersection centers in red
         for x in range(geom.x0, w, geom.pitch):
             for y in range(geom.y0, h, geom.pitch):
                 if self.mask.is_allowed_tap(x, y):
                     cv2.circle(debug_img, (x, y), 3, (0, 0, 255), -1)
+
+        return debug_img
+
+    def draw_heads_debug(self, frame: np.ndarray, heads: List[ArrowHead]) -> np.ndarray:
+        """
+        Step 3.2 Debug: Color-codes detected arrow heads and draws directional indicators.
+        Red=UP, Green=DOWN, Blue=LEFT, Yellow=RIGHT
+        """
+        debug_img = frame.copy()
+        color_map = {
+            Direction.UP: (0, 0, 255),      # Red
+            Direction.DOWN: (0, 255, 0),    # Green
+            Direction.LEFT: (255, 0, 0),    # Blue
+            Direction.RIGHT: (0, 255, 255), # Yellow
+        }
+
+        for head in heads:
+            color = color_map[head.direction]
+            x, y = head.x_px, head.y_px
+            cv2.circle(debug_img, (x, y), 8, color, -1)
+
+            # Draw directional tip line
+            dx, dy = head.direction.vector
+            end_x = x + dx * 15
+            end_y = y + dy * 15
+            cv2.arrowedLine(debug_img, (x, y), (end_x, end_y), (255, 255, 255), 2, tipLength=0.4)
 
         return debug_img
