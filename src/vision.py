@@ -103,8 +103,10 @@ class VisionDetector:
         candidates: List[ArrowHead] = []
 
         # 1. Candidate extraction: scan grid intersections with 1 edge connection
-        for row_idx, y in enumerate(range(geom.y0, h - radius, pitch)):
-            for col_idx, x in enumerate(range(geom.x0, w - radius, pitch)):
+        for row_idx in range(geom.rows):
+            y = geom.min_y + row_idx * pitch
+            for col_idx in range(geom.cols):
+                x = geom.min_x + col_idx * pitch
                 if not self.mask.is_allowed_tap(x, y):
                     continue
 
@@ -135,52 +137,43 @@ class VisionDetector:
                         direction = Direction.RIGHT
 
                     if direction:
-                        candidates.append(
-                            ArrowHead(
-                                arrow_id=0,
-                                row=row_idx,
-                                col=col_idx,
-                                direction=direction,
-                                x_px=x,
-                                y_px=y,
+                        # Wing width check across perpendicular axis to distinguish triangular heads from flat tails
+                        dx, dy = direction.pixel_delta
+                        px_dir, py_dir = -dy, dx  # Perpendicular unit vector
+
+                        widths = []
+                        for step in range(-radius, radius + 1):
+                            cur_x = radius + step * dx
+                            cur_y = radius + step * dy
+                            w = 0
+                            for k in range(-radius, radius + 1):
+                                nx = int(cur_x + k * px_dir)
+                                ny = int(cur_y + k * py_dir)
+                                if 0 <= nx < patch.shape[1] and 0 <= ny < patch.shape[0]:
+                                    if patch[ny, nx] > 0:
+                                        w += 1
+                            widths.append(w)
+
+                        max_w = max(widths) if widths else 0
+
+                        # Triangular arrowhead wing width is >= 35% of cell pitch (vs flat stem line width ~15-20%)
+                        if max_w >= int(pitch * 0.35):
+                            candidates.append(
+                                ArrowHead(
+                                    arrow_id=0,
+                                    row=row_idx,
+                                    col=col_idx,
+                                    direction=direction,
+                                    x_px=x,
+                                    y_px=y,
+                                )
                             )
-                        )
 
-        # 2. Refinement: width gradient check to filter out flat tail ends
-        refined_heads: List[ArrowHead] = []
-        for cand in candidates:
-            x, y = cand.x_px, cand.y_px
-            patch = dark_mask[y - radius : y + radius + 1, x - radius : x + radius + 1]
-            if patch.shape != (2 * radius + 1, 2 * radius + 1):
-                continue
-
-            dx, dy = cand.direction.pixel_delta
-            tip_pt = (radius + dx * (radius // 2), radius + dy * (radius // 2))
-            body_pt = (radius - dx * (radius // 2), radius - dy * (radius // 2))
-
-            px_dir, py_dir = -dy, dx
-
-            tip_w = sum(
-                1 for k in range(-6, 7)
-                if 0 <= int(tip_pt[0] + k * px_dir) < patch.shape[1]
-                and 0 <= int(tip_pt[1] + k * py_dir) < patch.shape[0]
-                and patch[int(tip_pt[1] + k * py_dir), int(tip_pt[0] + k * px_dir)] > 0
-            )
-            body_w = sum(
-                1 for k in range(-6, 7)
-                if 0 <= int(body_pt[0] + k * px_dir) < patch.shape[1]
-                and 0 <= int(body_pt[1] + k * py_dir) < patch.shape[0]
-                and patch[int(body_pt[1] + k * py_dir), int(body_pt[0] + k * px_dir)] > 0
-            )
-
-            if body_w > tip_w:
-                refined_heads.append(cand)
-
-        # 3. Assign unique sequential IDs to true arrowheads
-        for idx, head in enumerate(refined_heads):
+        # Assign unique sequential IDs to true arrowheads
+        for idx, head in enumerate(candidates):
             head.arrow_id = idx + 1
 
-        return refined_heads
+        return candidates
 
     def build_grid(
         self, frame: np.ndarray, geom: GridGeometry, heads: List[ArrowHead]
