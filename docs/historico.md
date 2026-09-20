@@ -377,3 +377,24 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 2. **Resultados e Validação:**
    - 10/10 testes unitários aprovados (`OK`).
    - Teste CLI em modo fixture (`live_bug_level.png`): deteta 48 setas, executa 1 toque por ciclo com validação de máscara e 0 stitching/pans acionados.
+
+### Commit `Phase 5c (Physical Display Touch Screen Resolution Scaling Fix)`
+- **Data/Hora:** 2026-09-20 02:23:00 +0100
+- **Mensagem:** `fix(actuator): auto-detect physical display resolution and scale frame coordinates to physical ADB touch screen pixels`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Resolver a **causa raiz fundamental** de todas as falhas de toque, toques acidentais no canto superior esquerdo e repetições infinitas (ex.: 13 tentativas no mesmo ponto `124, 491`).
+2. Análise empírica via `adb shell wm size` revelou que a resolução física real do ecrã táctil do telemóvel Android é de **$1220 \times 2712$ pixels**, enquanto os fotogramas capturados via `screenrecord` / `ScrcpyFrameSource` são comprimidos para **$600 \times 1332$ pixels**.
+3. O atuador antigo enviava coordenadas de píxeis de imagem ($600 \times 1332$) diretamente para o ADB sem aplicar a escala de conversão física ($2.0333\times$ na horizontal, $2.0360\times$ na vertical). Como resultado, um toque calculado no meio do fotograma ($247, 443$) era executado no ponto físico ($247, 443$) do telemóvel (canto superior esquerdo do ecrã físico $1220 \times 2712$), falhando a seta por completo.
+
+#### Alterações Detalhadas Efetuadas:
+1. **Deteção e Escala de Resolução em `src/actuator.py`:**
+   - Adicionada a autodeteção da resolução física do display via `adb shell wm size` no `Actuator.__init__`.
+   - Cálculo dinâmico dos fatores de escala: $\text{scale}_x = W_{\text{phys}} / W_{\text{frame}}$ e $\text{scale}_y = H_{\text{phys}} / H_{\text{frame}}$.
+   - Atualizados os métodos `tap(x, y)` e `swipe(...)` para transformarem automaticamente as coordenadas da imagem ($x, y$) para as coordenadas físicas do ecrã tátil ($\text{phys}_x = x \cdot \text{scale}_x$, $\text{phys}_y = y \cdot \text{scale}_y$).
+
+2. **Resultados e Validação:**
+   - Exemplo de transformação: Imagem $(247, 443) \rightarrow$ Físico $(502, 902)$ no telemóvel real.
+   - 10/10 testes unitários aprovados (`OK`).
+   - Eliminação total dos toques falhados no canto superior esquerdo do ecrã.
