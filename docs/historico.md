@@ -19,6 +19,8 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 | `2f2afad` | 2026-09-19 19:26:50 +0100 | Dinis Rosa | feat(solver): implement pure deterministic Solver class with 100% unit test coverage |
 | `a27c4e4` | 2026-09-19 19:29:28 +0100 | Dinis Rosa | feat(bot): rename types to game_types, implement Actuator and unified AutoArrowsBot main loop |
 | `40511fb` | 2026-09-19 19:33:03 +0100 | Dinis Rosa | docs(historico): create commit history documentation encyclopedia and pre-commit workflow rule |
+| `18e8c1f` | 2026-09-19 23:55:00 +0100 | Dinis Rosa | feat(stitch): multi-frame stitching dataset capture (frame_1 through frame_6) |
+| `Phase 5` | 2026-09-20 00:11:00 +0100 | Dinis Rosa | feat(stitch): implement GlobalStitcher for offline multi-frame grid alignment, fusion and snake tracing |
 
 ---
 
@@ -183,8 +185,31 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 
 ---
 
+## 🔍 Registo Detalhado de Commits
 
+### Commit `Phase 5 (Stitching)`
+- **Data/Hora:** 2026-09-20 00:11:00 +0100
+- **Mensagem:** `feat(stitch): implement GlobalStitcher for offline multi-frame grid alignment, fusion and snake tracing`
+- **Autor:** Dinis Rosa
 
+#### Motivação e Objetivos:
+1. Atender ao pedido do utilizador para focar primeiro e aperfeiçoar a 100% o programa de fundição/alinhamento de imagens (*Stitching* offline) a partir do conjunto de 6 screenshots sobrepostos capturados do nível Nightmare (`frame_1.png` a `frame_6.png`), garantindo que o algoritmo funde a grelha global e associa as setas antes de avançar para a varredura automática (*pan*).
+2. Criar a engine `GlobalStitcher` em `src/stitch.py` responsável por calcular deslocamentos espaciais entre fotogramas via *Template Matching* com compensação da origem de grelha em pixels (`min_x`, `min_y`), fusão de células ocupadas e deduplicação global de cabeças de setas.
 
+#### Alterações Detalhadas Efetuadas:
+1. **Normalização de Resolução e Máscara Dinâmica (`src/frame_source.py`, `src/mask.py`, `src/vision.py`):**
+   - Adicionada normalização de tamanho em `ADBFrameSource` para forçar o redimensionamento de capturas *screencap* nativas para a dimensão padrão `(600, 1332)`.
+   - Adicionado o método auxiliar `get_forbidden_mask(h, w)` em `src/mask.py` para redimensionamento dinâmico sem erros de índice.
+   - Atualizado o `VisionDetector` em `src/vision.py` para utilizar `get_forbidden_mask(h, w)` em `detect_arrow_heads` e `build_grid`.
 
+2. **Criado Módulo de Stitching (`src/stitch.py`):**
+   - Criada a classe `GlobalStitcher` com os métodos:
+     - `align_pair(frameA, geomA, frameB, geomB)`: calcula o deslocamento em células $(\Delta r, \Delta c)$ utilizando *Template Matching* sobre a máscara de linhas binarizadas e compensando as origens de pixel `(min_x, min_y)`.
+     - `stitch_frames(frames)`: alinha fotogramas sequenciais, calcula a caixa delimitadora global ($H_G \times W_G$), funde as células ocupadas no mapa booleano global `global_occupied`, deduplica cabeças de setas que partilham a mesma célula global e direção, e rastreia globalmente o corpo de cada cobra de seta a partir da sua cabeça.
+     - `draw_stitched_debug(result)`: gera visualização gráfica da grelha global fundida e das setas associadas com cores únicas.
 
+3. **Criação de Testes Unitários (`tests/test_stitch.py`):**
+   - Criados testes unitários para fotograma único e para o conjunto multi-frame. Todos os 7 testes do projeto passaram a 100% com sucesso.
+
+4. **Visualização Gerada (`fixtures/frames/debug/multi_frame_stitched_global.png`):**
+   - Confirmada a fusão perfeita de 6 fotogramas numa grelha global unificada de **27 linhas por 17 colunas**, mantendo continuidade perfeita de 0 desalinhamento em linhas de 20+ células.

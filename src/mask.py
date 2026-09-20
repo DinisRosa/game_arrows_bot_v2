@@ -45,21 +45,26 @@ class BoardMask:
             return bool(self.allowed_mask[y, x])
         return False
 
+    def get_forbidden_mask(self, h: int, w: int) -> np.ndarray:
+        """
+        Returns boolean mask of forbidden regions dynamically resized to (h, w).
+        """
+        if self.forbidden_mask is None:
+            return np.zeros((h, w), dtype=bool)
+        if (h, w) != self.forbidden_mask.shape:
+            return cv2.resize(
+                self.forbidden_mask.astype(np.uint8), 
+                (w, h), 
+                interpolation=cv2.INTER_NEAREST
+            ).astype(bool)
+        return self.forbidden_mask
+
     def apply_mask(self, frame: np.ndarray, fill_color: Tuple[int, int, int] = (255, 255, 255)) -> np.ndarray:
         """
         Applies mask to frame, replacing forbidden UI regions with fill_color (default white).
         """
         masked_frame = frame.copy()
-        if self.forbidden_mask is not None:
-            h, w = frame.shape[:2]
-            # Resize mask if frame resolution differs
-            if (h, w) != self.forbidden_mask.shape:
-                resized_forbidden = cv2.resize(
-                    self.forbidden_mask.astype(np.uint8), 
-                    (w, h), 
-                    interpolation=cv2.INTER_NEAREST
-                ).astype(bool)
-                masked_frame[resized_forbidden] = fill_color
-            else:
-                masked_frame[self.forbidden_mask] = fill_color
+        h, w = frame.shape[:2]
+        forbidden = self.get_forbidden_mask(h, w)
+        masked_frame[forbidden] = fill_color
         return masked_frame

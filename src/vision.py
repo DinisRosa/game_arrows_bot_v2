@@ -95,7 +95,7 @@ class VisionDetector:
         h, w = frame.shape[:2]
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         _, dark_mask = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY_INV)
-        dark_mask[self.mask.forbidden_mask] = 0
+        dark_mask[self.mask.get_forbidden_mask(h, w)] = 0
 
         pitch = geom.pitch
         radius = pitch // 2
@@ -185,7 +185,7 @@ class VisionDetector:
         h, w = frame.shape[:2]
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         _, dark_mask = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY_INV)
-        dark_mask[self.mask.forbidden_mask] = 0
+        dark_mask[self.mask.get_forbidden_mask(h, w)] = 0
 
         pitch = geom.pitch
 

@@ -113,8 +113,10 @@ class ADBFrameSource:
     Captures frames from Android device using 'adb exec-out screencap -p'.
     Fallback frame source when stream is initializing or resetting.
     """
-    def __init__(self, device_id: Optional[str] = None):
+    def __init__(self, device_id: Optional[str] = None, width: int = 600, height: int = 1332):
         self.device_id = device_id
+        self.width = width
+        self.height = height
         self._last_ts: float = 0.0
 
     def _build_adb_cmd(self) -> list[str]:
@@ -134,6 +136,9 @@ class ADBFrameSource:
         frame = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
         if frame is None:
             raise ValueError("Failed to decode screencap image buffer")
+
+        if self.width and self.height and (frame.shape[1] != self.width or frame.shape[0] != self.height):
+            frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
         
         self._last_ts = time.monotonic()
         return frame
