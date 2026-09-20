@@ -23,6 +23,7 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 | `Phase 5` | 2026-09-20 00:11:00 +0100 | Dinis Rosa | feat(stitch): implement GlobalStitcher for offline multi-frame grid alignment, fusion and snake tracing |
 | `Phase 5.1` | 2026-09-20 00:16:00 +0100 | Dinis Rosa | fix(vision): implement robust dead-end directional arrowhead detection for dense Nightmare mazes |
 | `Phase 5.2` | 2026-09-20 00:30:00 +0100 | Dinis Rosa | fix(stitch): implement confidence-thresholded graph clustering alignment to prevent forced non-overlapping image stitching |
+| `Phase 5a` | 2026-09-20 00:46:00 +0100 | Dinis Rosa | feat(pan): implement Smart Boundary-Aware Pan Sweeping Engine with 3-line white space rule and 120ms fast swipes |
 
 ---
 
@@ -259,3 +260,31 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 2. **Resultados e Validação:**
    - Imagens de depuração geradas para os pares reais sobrepostos: [cluster_1_stitched.png (Frame 1+6)](file:///home/dinisrosa22/.gemini/antigravity-ide/brain/ed901e9c-fd44-4080-8f09-5a763c9a7d45/cluster_1_stitched.png) e [cluster_3_stitched.png (Frame 3+4)](file:///home/dinisrosa22/.gemini/antigravity-ide/brain/ed901e9c-fd44-4080-8f09-5a763c9a7d45/cluster_3_stitched.png), exibindo 100% de precisão sem qualquer desalinhamento visual.
    - Atualizado `tests/test_stitch.py` com asserções de validação de clusters. 100% dos testes aprovados.
+
+### Commit `Phase 5a (Smart Boundary-Aware Pan Sweeping Engine)`
+- **Data/Hora:** 2026-09-20 00:46:00 +0100
+- **Mensagem:** `feat(pan): implement Smart Boundary-Aware Pan Sweeping Engine with 3-line white space rule and 120ms fast swipes`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Concluir a Fase 5a da arquitetura do Auto-ARROWS-V2: Motor de Varredura Automática Inteligente (*Smart Pan Sweeping Engine*).
+2. Implementar deslizes de câmara de alta velocidade (`duration_ms=120ms`) via ADB (`Actuator.swipe`), seguidos de curto tempo de assentamento para evitar distorção ou *motion blur* nas capturas PyAV H.264.
+3. Aplicar a regra quantitativa estrita de borda: o bot deteta que alcançou a margem do tabuleiro quando deteta **pelo menos 3 colunas (ou linhas) consecutivas de espaço branco puro** (células 100% vazias). Assim que a regra é ativada numa direção (`border_found[direction] = True`), o bot aborta imediatamente novos deslizes nessa direção, minimizando o número de fotos e pans.
+
+#### Alterações Detalhadas Efetuadas:
+1. **Atuador (`src/actuator.py`):**
+   - Adicionado o método `swipe(x1, y1, x2, y2, duration_ms=120)` para atuação ADB e simulação `dry_run`.
+
+2. **Motor de Varredura (`src/pan.py`):**
+   - Criada a classe `PanController(actuator, detector)` com:
+     - `check_borders(grid, geom)`: valida se existem $\ge 3$ colunas/linhas consecutivas vazias no limite do fotograma e marca a borda como atingida.
+     - `pan(direction, duration_ms=120)`: executa deslize rápido de câmara de 120ms com tempo de assentamento para foco nítido.
+     - `step()`: executa a sequência adaptativa em espiral *Center-Out*, saltando direções já bloqueadas por bordas.
+
+3. **Integração no Loop Principal (`src/bot.py`):**
+   - Atualizado o `AutoArrowsBot` para integrar `PanController` e `GlobalStitcher`.
+   - Quando não existem mais jogadas no ecrã local, ativa a varredura adaptativa, adiciona novos fotogramas ao `GlobalStitcher.stitch_clusters()` e resolve jogadas na grelha global fundida.
+
+4. **Suite de Testes (`tests/test_pan.py`):**
+   - Criados testes unitários para a regra das 3 colunas brancas, poda de bordas e swipes rápidos.
+   - **Resultado:** 100% dos 10 testes unitários do projeto aprovados com sucesso.

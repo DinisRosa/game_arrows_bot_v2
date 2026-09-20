@@ -11,12 +11,14 @@ from src.mask import BoardMask
 from src.vision import VisionDetector
 from src.solver import Solver
 from src.actuator import Actuator
+from src.stitch import GlobalStitcher
+from src.pan import PanController
 
 
 class AutoArrowsBot:
     """
     Unified game bot loop for Auto-ARROWS-V2.
-    Orchestrates FrameSource -> VisionDetector -> Solver -> Actuator.
+    Orchestrates FrameSource -> VisionDetector -> GlobalStitcher -> Solver -> PanController -> Actuator.
     """
     def __init__(
         self,
@@ -29,7 +31,10 @@ class AutoArrowsBot:
         self.mask = BoardMask("mask/mask.png")
         self.vision = vision or VisionDetector(self.mask)
         self.actuator = actuator or Actuator(dry_run=True)
+        self.stitcher = GlobalStitcher(self.vision)
+        self.pan_controller = PanController(self.actuator, self.vision)
         self.max_iterations = max_iterations
+        self.captured_frames = []
 
     def run_step(self) -> int:
         """
@@ -41,31 +46,51 @@ class AutoArrowsBot:
             print("[Bot] No frame available.")
             return 0
 
+        self.captured_frames.append(frame)
+
         # Step 1: Detect grid geometry
         geom = self.vision.detect_grid_geometry(frame)
 
         # Step 2: Detect arrowheads
         heads = self.vision.detect_arrow_heads(frame, geom)
-        if len(heads) == 0:
-            print("[Bot] No arrowheads detected (level cleared or empty board).")
-            return 0
-
-        # Step 3: Build grid mapping
         grid = self.vision.build_grid(frame, geom, heads)
 
-        # Step 4: Calculate playable moves
+        # Step 3: Check white margin border rule (3 consecutive empty lines)
+        borders = self.pan_controller.check_borders(grid, geom)
+        detected_borders_str = ", ".join([d.value for d, found in borders.items() if found]) or "None"
+        print(f"[Bot] Detected {len(heads)} arrowheads. Borders found: [{detected_borders_str}].")
+
+        # Step 4: Calculate playable moves on current view
         moves = Solver.playable_moves(grid, heads)
-        print(f"[Bot] Detected {len(heads)} arrowheads. Found {len(moves)} playable moves.")
 
-        if len(moves) == 0:
-            print("[Bot] Board active but no clear playable moves found.")
-            return 0
+        if len(moves) > 0:
+            print(f"[Bot] Found {len(moves)} playable moves on current view.")
+            # Execute playable moves with spatial locality
+            for move in moves:
+                self.actuator.execute_move(move, delay_after=0.05)
+            return len(moves)
 
-        # Step 5: Execute playable moves
-        for move in moves:
-            self.actuator.execute_move(move, delay_after=0.05)
+        # Step 5: If no local moves exist, trigger adaptive smart pan sweep if borders remain
+        if not self.pan_controller.is_all_borders_found():
+            print("[Bot] No moves on local view. Executing adaptive fast camera pan...")
+            swiped_dir = self.pan_controller.step(duration_ms=120, pitch=geom.pitch)
+            if swiped_dir:
+                print(f"[Bot] Camera panned [{swiped_dir.value}]. Capturing updated frame...")
+                new_frame = self.frame_source.get_frame()
+                if new_frame is not None:
+                    self.captured_frames.append(new_frame)
+                    # Stitch captured frames into global board
+                    primary_cluster = self.stitcher.stitch_frames(self.captured_frames, min_confidence=0.65)
+                    stitched_moves = Solver.playable_moves(primary_cluster.grid, primary_cluster.heads)
+                    print(f"[Bot] Stitched global grid ({primary_cluster.global_rows}x{primary_cluster.global_cols}). Found {len(stitched_moves)} playable moves on stitched board.")
+                    if len(stitched_moves) > 0:
+                        for move in stitched_moves[:1]:
+                            self.actuator.execute_move(move, delay_after=0.05)
+                        return len(stitched_moves)
+        else:
+            print("[Bot] All 4 level borders reached and no more moves available.")
 
-        return len(moves)
+        return 0
 
     def run_loop(self, delay_between_steps: float = 0.2):
         """
