@@ -123,20 +123,13 @@ class VisionDetector:
                 l_edge = bool(np.sum(patch[:, 0]) > 0)
                 r_edge = bool(np.sum(patch[:, -1]) > 0)
 
-                edges_count = int(t_edge) + int(b_edge) + int(l_edge) + int(r_edge)
-
-                if edges_count == 1:
-                    direction: Optional[Direction] = None
-                    if b_edge and not (t_edge or l_edge or r_edge):
-                        direction = Direction.UP
-                    elif t_edge and not (b_edge or l_edge or r_edge):
-                        direction = Direction.DOWN
-                    elif r_edge and not (l_edge or t_edge or b_edge):
-                        direction = Direction.LEFT
-                    elif l_edge and not (r_edge or t_edge or b_edge):
-                        direction = Direction.RIGHT
-
-                    if direction:
+                for direction, fwd, bwd in [
+                    (Direction.UP, t_edge, b_edge),
+                    (Direction.DOWN, b_edge, t_edge),
+                    (Direction.LEFT, l_edge, r_edge),
+                    (Direction.RIGHT, r_edge, l_edge)
+                ]:
+                    if not fwd and bwd:
                         # Wing width check across perpendicular axis to distinguish triangular heads from flat tails
                         dx, dy = direction.pixel_delta
                         px_dir, py_dir = -dy, dx  # Perpendicular unit vector
@@ -169,11 +162,20 @@ class VisionDetector:
                                 )
                             )
 
+        # Deduplicate candidates sharing the same cell and direction
+        unique_candidates: List[ArrowHead] = []
+        seen = set()
+        for c in candidates:
+            key = (c.row, c.col, c.direction)
+            if key not in seen:
+                seen.add(key)
+                unique_candidates.append(c)
+
         # Assign unique sequential IDs to true arrowheads
-        for idx, head in enumerate(candidates):
+        for idx, head in enumerate(unique_candidates):
             head.arrow_id = idx + 1
 
-        return candidates
+        return unique_candidates
 
     def build_grid(
         self, frame: np.ndarray, geom: GridGeometry, heads: List[ArrowHead]

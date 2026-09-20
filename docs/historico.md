@@ -21,6 +21,7 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 | `40511fb` | 2026-09-19 19:33:03 +0100 | Dinis Rosa | docs(historico): create commit history documentation encyclopedia and pre-commit workflow rule |
 | `18e8c1f` | 2026-09-19 23:55:00 +0100 | Dinis Rosa | feat(stitch): multi-frame stitching dataset capture (frame_1 through frame_6) |
 | `Phase 5` | 2026-09-20 00:11:00 +0100 | Dinis Rosa | feat(stitch): implement GlobalStitcher for offline multi-frame grid alignment, fusion and snake tracing |
+| `Phase 5.1` | 2026-09-20 00:16:00 +0100 | Dinis Rosa | fix(vision): implement robust dead-end directional arrowhead detection for dense Nightmare mazes |
 
 ---
 
@@ -213,3 +214,23 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 
 4. **Visualização Gerada (`fixtures/frames/debug/multi_frame_stitched_global.png`):**
    - Confirmada a fusão perfeita de 6 fotogramas numa grelha global unificada de **27 linhas por 17 colunas**, mantendo continuidade perfeita de 0 desalinhamento em linhas de 20+ células.
+
+### Commit `Phase 5.1 (Dead-End Arrowhead Detection)`
+- **Data/Hora:** 2026-09-20 00:16:00 +0100
+- **Mensagem:** `fix(vision): implement robust dead-end directional arrowhead detection for dense Nightmare mazes`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Resolver a limitação identificada ao testar o conjunto `multi_frame` (`frame_1.png` a `frame_6.png`), na qual os tabuleiros complexos (*Nightmare levels*) contêm setas cujas pontas terminam em *dead-ends* (becos sem saída) tocando em paredes laterais (`edges_count` = 1, 2 ou 3 em vez de estritamente 1).
+2. Atualizar o `VisionDetector` em `src/vision.py` para classificar direções com base na regra fundamental de um ponto terminal: a extremidade no sentido do apontamento deve ser nula (`forward_edge == False`) e o corpo da seta deve vir do sentido oposto (`backward_edge == True`), complementado pelo gradiente de largura de asa ($\ge 35\%$ do *pitch*).
+
+#### Alterações Detalhadas Efetuadas:
+1. **Melhoria no `VisionDetector.detect_arrow_heads` (`src/vision.py`):**
+   - Substituída a restrição rígida de `edges_count == 1` pela validação direcional de extremidade morta `not fwd and bwd`.
+   - Adicionada deduplicação de candidatos que partilham a mesma célula `(row, col)` e direção.
+
+2. **Resultados no Dataset Multi-Frame:**
+   - **Cabeças Totais Detetadas:** De 4 cabeças passou a **179 cabeças únicas de setas** detetadas e fundidas na grelha global de $27 \times 17$ células!
+   - **Jogadas Imediatas Jogáveis:** 12 jogadas jogáveis calculadas pelo `Solver`.
+   - **Sequência de Resolução em Cascata:** **77 setas resolvíveis em cadeia** sem falhas!
+   - Imagem de depuração atualizada em `fixtures/frames/debug/multi_frame_stitched_global.png`.
