@@ -8,11 +8,53 @@ class Solver:
     Determines which arrowheads have a clear line of sight to the edge of the grid.
     """
     @staticmethod
-    def playable_moves(grid: List[List[Cell]], heads: List[ArrowHead]) -> List[Move]:
+    def is_pixel_ray_clear(frame: np.ndarray, head: ArrowHead, pitch: int = 28, mask=None) -> bool:
+        """
+        Performs continuous pixel-level ray tracing from the tip of the arrowhead along its forward direction.
+        Returns True if and only if NO dark obstacle pixels exist in image space along the line of sight.
+        """
+        import cv2
+        import numpy as np
+        h, w = frame.shape[:2]
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        _, dark = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY_INV)
+        if mask and hasattr(mask, 'get_forbidden_mask'):
+            dark[mask.get_forbidden_mask(h, w)] = 0
+
+        dx, dy = head.direction.pixel_delta
+        px_dir, py_dir = -dy, dx
+
+        start_dist = int(pitch * 0.60)
+        px = head.x_px + dx * start_dist
+        py = head.y_px + dy * start_dist
+
+        while 0 <= px < w and 0 <= py < h:
+            if mask and hasattr(mask, 'is_allowed_tap') and not mask.is_allowed_tap(int(px), int(py)):
+                break
+
+            for k in range(-3, 4):
+                nx = int(px + k * px_dir)
+                ny = int(py + k * py_dir)
+                if 0 <= nx < w and 0 <= ny < h:
+                    if dark[ny, nx] > 0:
+                        return False
+            px += dx * 3
+            py += dy * 3
+
+        return True
+
+    @staticmethod
+    def playable_moves(
+        grid: List[List[Cell]],
+        heads: List[ArrowHead],
+        frame: Optional[np.ndarray] = None,
+        pitch: int = 28,
+        mask=None
+    ) -> List[Move]:
         """
         Returns a list of playable moves.
         An arrowhead is playable if tracing forward along its pointing direction to the grid boundary
-        encounters NO occupied cells of OTHER arrows and NO unknown cells.
+        encounters NO occupied cells of OTHER arrows, NO unknown cells, and NO pixel-level dark line obstacles.
         """
         rows = len(grid)
         if rows == 0:
@@ -41,6 +83,9 @@ class Solver:
                 c += dc
 
             if is_clear:
+                if frame is not None and not Solver.is_pixel_ray_clear(frame, head, pitch, mask):
+                    continue
+
                 moves.append(
                     Move(
                         arrow_id=head.arrow_id,

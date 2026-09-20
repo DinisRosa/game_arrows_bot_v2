@@ -398,3 +398,27 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
    - Exemplo de transformação: Imagem $(247, 443) \rightarrow$ Físico $(502, 902)$ no telemóvel real.
    - 10/10 testes unitários aprovados (`OK`).
    - Eliminação total dos toques falhados no canto superior esquerdo do ecrã.
+
+### Commit `Phase 5d (Pixel-Level Ray Tracing Line Obstacle Verification)`
+- **Data/Hora:** 2026-09-20 02:28:00 +0100
+- **Mensagem:** `fix(solver, bot): implement pixel-level ray tracing line obstacle verification to eliminate false-positive blocked arrow moves`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Resolver a causa de toques errados que resultavam na perda de vidas durante o jogo real no telemóvel.
+2. A análise detalhada revelou que o solucionador antigo (`Solver.playable_moves`) apenas validava as intersecções de grelha discretas `grid[r][c]`. Se o corpo de uma seta cruzasse perpendicularmente **entre** duas intersecções sem tocar no píxel central exato, a célula `grid[r][c]` era marcada como `EMPTY`, levando o algoritmo a declarar erroneamente uma seta bloqueada como "jogável".
+3. Implementar a verificação de **raio de píxeis contínuos** (`is_pixel_ray_clear`) que traça a trajetória física em imagem real desde a ponta da seta até ao limite da margem, detetando qualquer segmento de linha escura cruzada.
+
+#### Alterações Detalhadas Efetuadas:
+1. **Ray Tracing de Píxeis em `src/solver.py`:**
+   - Adicionado o método `is_pixel_ray_clear(frame, head, pitch, mask)`.
+   - Executa a varredura ao longo do vetor diretor da seta $(dx, dy)$ e verifica uma largura de 7 píxeis perpendiculares em busca de píxeis escuros de obstáculos.
+   - Atualizado o `Solver.playable_moves` para integrar a verificação de raio de píxeis em cada candidato a movimento.
+
+2. **Integração no Bot (`src/bot.py`):**
+   - O `run_step` passa o fotograma em tempo real, a dimensão do pitch e a máscara para `Solver.playable_moves`, garantindo que **apenas setas com linha de visão 100% limpa em imagem real** são consideradas jogáveis.
+
+3. **Resultados e Validação:**
+   - Teste na captura com erro real (`live_wrong_arrow_bug.png`): a cabeça 2 (RIGHT) que o solver antigo considerava jogável (causando colisão e perda de vida) foi **corretamente rejeitada como bloqueada**, resultando em 0 falsos positivos.
+   - Teste na captura útil (`live_user_level.png`): 16 jogadas 100% livres e sem obstrução identificadas e validadas.
+   - 10/10 testes unitários aprovados com sucesso (`OK`).

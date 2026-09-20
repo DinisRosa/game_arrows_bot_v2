@@ -63,8 +63,8 @@ class AutoArrowsBot:
         detected_borders_str = ", ".join([d.value for d, found in borders.items() if found]) or "None"
         print(f"[Bot] Detected {len(heads)} arrowheads. Borders found: [{detected_borders_str}].")
 
-        # Step 4: Calculate playable moves on current view
-        moves = Solver.playable_moves(grid, heads)
+        # Step 4: Calculate playable moves on current view with pixel-level ray tracing verification
+        moves = Solver.playable_moves(grid, heads, frame=frame, pitch=geom.pitch, mask=self.mask)
 
         if len(moves) > 0:
             print(f"[Bot] Found {len(moves)} playable moves on current view.")
