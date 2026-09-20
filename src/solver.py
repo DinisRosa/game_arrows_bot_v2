@@ -49,7 +49,8 @@ class Solver:
         heads: List[ArrowHead],
         frame: Optional[np.ndarray] = None,
         pitch: int = 28,
-        mask=None
+        mask=None,
+        borders: Optional[dict[Direction, bool]] = None
     ) -> List[Move]:
         """
         Returns a list of playable moves.
@@ -81,6 +82,10 @@ class Solver:
                     break
                 r += dr
                 c += dc
+
+            if is_clear and borders is not None:
+                if not borders.get(head.direction, True):
+                    is_clear = False
 
             if is_clear:
                 if frame is not None and not Solver.is_pixel_ray_clear(frame, head, pitch, mask):

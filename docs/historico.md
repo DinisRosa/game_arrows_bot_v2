@@ -422,3 +422,27 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
    - Teste na captura com erro real (`live_wrong_arrow_bug.png`): a cabeça 2 (RIGHT) que o solver antigo considerava jogável (causando colisão e perda de vida) foi **corretamente rejeitada como bloqueada**, resultando em 0 falsos positivos.
    - Teste na captura útil (`live_user_level.png`): 16 jogadas 100% livres e sem obstrução identificadas e validadas.
    - 10/10 testes unitários aprovados com sucesso (`OK`).
+
+### Commit `Phase 5e (Robust Screen Change Detection & Global Board Edge Enforcement)`
+- **Data/Hora:** 2026-09-20 16:00:00 +0100
+- **Mensagem:** `fix(bot, solver): implement robust dark pixel diffing for stream frozen detection and enforce board edges on solver moves`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Resolver a anomalia do loop infinito onde o bot continuava a carregar repetidamente na mesma coordenada após o stream do telemóvel encravar ou o toque incidir numa zona morta. O método original de diferença de cor média (`np.mean(cv2.absdiff) > 5.0`) originava falsos positivos constantes devido a artefactos de compressão de vídeo e minúsculas partículas do fundo do jogo, fazendo com que o ecrã nunca fosse dado como perfeitamente estático.
+2. Evitar que o bot jogue em setas que apontam para as extremidades do ecrã, mas onde a verdadeira margem cinzenta do tabuleiro (`Borders`) ainda não foi detetada. Anteriormente o `Solver` deixava a seta "fugir" para o exterior da matriz de visão local; mas em níveis largos (com necessidade de pan), a seta corria o risco de embater num obstáculo forasteiro fora do ecrã e subtrair vidas.
+
+#### Alterações Detalhadas Efetuadas:
+1. **Diferencial Robusto de Ecrã (`src/bot.py`):**
+   - Implementada a métrica de rácio de alteração de píxeis escuros em `_dark(self, f)`. A função isola binarizados com `< 100` e rejeita toda a zona de botões através do `BoardMask`.
+   - Modificado o método `_differs` para acusar estaticidade se a mudança na máscara negra for inferior a `0.4%` (`> 0.004`), tolerando perfeitamente ruído de compressão JPG vs H.264 ao mesmo tempo que acusa a falha real de remoção da seta.
+   - Corrigida a lógica de timeout (`new_frame is None`) para invocar um reinício de transmissão (`self.frame_source.stop()` e `get_frame()`) garantindo que as imagens a subtrair vêm estritamente do mesmo codec da câmara.
+
+2. **Reforço Espacial do Solver (`src/solver.py` e `src/bot.py`):**
+   - Introduzido o argumento obrigatório de dicionário `borders: Optional[dict[Direction, bool]]` na função `Solver.playable_moves`.
+   - O `while` de colisão de ray tracing do solver foi reforçado: se uma seta completar o trajeto sem colisões locais e pretender sair da grelha `is_clear`, é imperativo confirmar em `borders.get(head.direction)` se a extremidade em causa corresponde à margem final do tabuleiro. Caso contrário, a jogada fica interditada.
+   - O loop de controlo primário (`bot.py`) passa o estado atual (ex: `[DOWN, LEFT, RIGHT]`) recolhido pelo `PanController`.
+
+3. **Resultados e Validação:**
+   - Com toques reais bloqueados, o motor agora crava perfeitamente o contador nulo de diferença na 2ª tentativa e emite a interrupção `Falha repetida (2 toques sem efeito). Parando para evitar loop infinito.`
+   - O *ray tracing* passa a interditar movimentos cegos que desaguem fora do rectângulo limitador visual em direções inexploradas.

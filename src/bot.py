@@ -5,8 +5,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import time
 import argparse
 import cv2
+import numpy as np
 from typing import Optional
-from src.frame_source import FrameSource, ScrcpyFrameSource, FileFrameSource
+from src.frame_source import FrameSource, ScrcpyFrameSource, FileFrameSource, ADBFrameSource
 from src.mask import BoardMask
 from src.vision import VisionDetector
 from src.solver import Solver
@@ -37,6 +38,19 @@ class AutoArrowsBot:
         self.max_iterations = max_iterations
         self.enable_pan = enable_pan
         self.captured_frames = []
+        self._no_effect = 0
+
+    def _dark(self, f: np.ndarray) -> np.ndarray:
+        d = (cv2.cvtColor(f, cv2.COLOR_BGR2GRAY) < 100).astype(np.uint8)
+        h, w = d.shape[:2]
+        d[self.mask.get_forbidden_mask(h, w)] = 0
+        return d
+
+    def _differs(self, f1: np.ndarray, f2: Optional[np.ndarray], thr: float = 0.004) -> bool:
+        if f2 is None:
+            return True
+        d1, d2 = self._dark(f1), self._dark(f2)
+        return (d1 != d2).sum() / max(1, d1.sum()) > thr
 
     def run_step(self, single_move: bool = True) -> int:
         """
@@ -64,7 +78,7 @@ class AutoArrowsBot:
         print(f"[Bot] Detected {len(heads)} arrowheads. Borders found: [{detected_borders_str}].")
 
         # Step 4: Calculate playable moves on current view with pixel-level ray tracing verification
-        moves = Solver.playable_moves(grid, heads, frame=frame, pitch=geom.pitch, mask=self.mask)
+        moves = Solver.playable_moves(grid, heads, frame=frame, pitch=geom.pitch, mask=self.mask, borders=borders)
 
         if len(moves) > 0:
             print(f"[Bot] Found {len(moves)} playable moves on current view.")
@@ -84,7 +98,27 @@ class AutoArrowsBot:
                 # Execute ONLY 1 move per cycle to allow screen re-capture & animation stability
                 target_move = valid_moves[0]
                 print(f"[Bot] Executing 1 move: Arrow #{target_move.arrow_id} at ({target_move.tap_x_px}, {target_move.tap_y_px})")
-                self.actuator.execute_move(target_move, delay_after=0.35)
+                
+                t_tap = time.monotonic()
+                self.actuator.execute_move(target_move, delay_after=0.0)
+
+                new_frame = self.frame_source.get_frame_after(t_tap + 0.35, timeout=1.5)
+                if new_frame is None:
+                    print("[Bot] Stream encravado: a reiniciar.")
+                    if hasattr(self.frame_source, 'stop'):
+                        self.frame_source.stop()
+                    # get_frame() will automatically restart the stream and fetch a valid H.264 frame
+                    new_frame = self.frame_source.get_frame()
+
+                if self._differs(new_frame, frame):
+                    self._no_effect = 0
+                else:
+                    self._no_effect += 1
+
+                if self._no_effect >= 2:
+                    print("[Bot] Falha repetida (2 toques sem efeito). Parando para evitar loop infinito.")
+                    return 0
+
                 return 1
             else:
                 executed_count = 0
