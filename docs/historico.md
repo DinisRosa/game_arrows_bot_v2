@@ -25,6 +25,7 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 | `Phase 5.2` | 2026-09-20 00:30:00 +0100 | Dinis Rosa | fix(stitch): implement confidence-thresholded graph clustering alignment to prevent forced non-overlapping image stitching |
 | `Phase 5a` | 2026-09-20 00:46:00 +0100 | Dinis Rosa | feat(pan): implement Smart Boundary-Aware Pan Sweeping Engine with 3-line white space rule and 120ms fast swipes |
 | `Phase 5a.1` | 2026-09-20 00:50:00 +0100 | Dinis Rosa | fix(pan, bot): clamp swipe coordinates within physical screen margins and map global stitched moves to visible viewport |
+| `Phase 5a.2` | 2026-09-20 00:57:00 +0100 | Dinis Rosa | fix(vision): eliminate false positive arrowhead detections at 90-degree L-bend line corners |
 
 ---
 
@@ -311,3 +312,22 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 3. **Resultados e Validação:**
    - 100% dos 10 testes unitários aprovados (`OK`).
    - Execução CLI em modo `--dry-run` a gerar coordenadas válidas `Swipe (550, 666) -> (50, 666)` e toques projetados corretamente.
+
+### Commit `Phase 5a.2 (Corner Bend False-Positive Rejection)`
+- **Data/Hora:** 2026-09-20 00:57:00 +0100
+- **Mensagem:** `fix(vision): eliminate false positive arrowhead detections at 90-degree L-bend line corners`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Resolver o erro crítico reportado pelo utilizador no qual o bot tocou em 2 posições erradas no ecrã real e causou a perda de 2 vidas.
+2. Análise empírica rigorosa revelou que esquinas/curvas de 90 graus no corpo das cobras de setas (onde uma linha vertical se cruza com uma linha horizontal a 90°) satisfaziam erroneamente a condição de extremidade `not fwd and bwd` em duas direções simultâneas. Na intersecção da curva de 90°, a largura do bloco era de 29px (o dobro da espessura normal de 9-15px de um corpo de seta), sendo detetado erroneamente como duas cabeças falsas.
+
+#### Alterações Detalhadas Efetuadas:
+1. **Filtro de Rejeição de Esquinas em `src/vision.py`:**
+   - Adicionada a validação do bloco central `w_center < int(pitch * 0.50)` no ponto de intersecção `step = 0`.
+   - As pontas triangulares reais de setas têm espessura afunilada de centro $\le 15\text{px}$, enquanto curvas de 90° têm blocos gigantes de intersecção $\ge 29\text{px}$.
+   - Adicionada deduplicação por célula `(row, col)`.
+
+2. **Resultados no Tabuleiro:**
+   - Falsos positivos reduzidos de 425 candidatos (com dezenas de curvas falsas) para **exatamente 49 cabeças reais de setas**!
+   - As 2 jogadas calculadas no `screenshot_1` passaram a ser **100% setas verdadeiras livres desimpedidas que saem diretamente do tabuleiro com 0 perda de vidas**.

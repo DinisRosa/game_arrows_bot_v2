@@ -130,9 +130,21 @@ class VisionDetector:
                     (Direction.RIGHT, r_edge, l_edge)
                 ]:
                     if not fwd and bwd:
-                        # Wing width check across perpendicular axis to distinguish triangular heads from flat tails
                         dx, dy = direction.pixel_delta
                         px_dir, py_dir = -dy, dx  # Perpendicular unit vector
+
+                        # Calculate width at center intersection (step 0)
+                        # A 90-degree L-bend corner has a huge center junction block >= 50% pitch
+                        w_center = 0
+                        for k in range(-radius, radius + 1):
+                            nx = int(radius + k * px_dir)
+                            ny = int(radius + k * py_dir)
+                            if 0 <= nx < patch.shape[1] and 0 <= ny < patch.shape[0]:
+                                if patch[ny, nx] > 0:
+                                    w_center += 1
+
+                        if w_center >= int(pitch * 0.50):
+                            continue
 
                         widths = []
                         for step in range(-radius, radius + 1):
@@ -162,11 +174,11 @@ class VisionDetector:
                                 )
                             )
 
-        # Deduplicate candidates sharing the same cell and direction
+        # Deduplicate candidates sharing the same cell (row, col)
         unique_candidates: List[ArrowHead] = []
         seen = set()
         for c in candidates:
-            key = (c.row, c.col, c.direction)
+            key = (c.row, c.col)
             if key not in seen:
                 seen.add(key)
                 unique_candidates.append(c)
