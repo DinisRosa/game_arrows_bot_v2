@@ -357,3 +357,23 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
      - **Detetadas:** 48 setas, 20 jogadas locais no ecrã visível.
      - **Bordas:** `[UP, DOWN, LEFT, RIGHT]` detetadas no 1º frame (0 *panning*, 0 *stitching*).
      - **Toques:** 100% das 20 jogadas efetuadas estritamente na área jogável ($y \in [358..974]$), com **0 toques em espaço branco**.
+
+### Commit `Phase 5b (Pure Single-Frame Perception Cycle with Real-Time Frame Re-Capture)`
+- **Data/Hora:** 2026-09-20 02:16:00 +0100
+- **Mensagem:** `refactor(bot): simplify bot loop to 1 move per cycle with real-time frame re-capture and disable automatic panning/stitching`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Atender ao pedido direto do utilizador de simplificar a arquitetura e eliminar a complexidade do motor de *stitching/panning* durante o jogo regular.
+2. Eliminar completamente o disparo de toques em rajada (*batch-tapping*) de múltiplas jogadas desatualizadas a partir de uma única fotografia antiga.
+3. Implementar o ciclo estrito **1 toque por iteração + re-captura de ecrã em tempo real** (`single_move=True`), garantindo que o bot valida visualmente o estado exato do tabuleiro a cada jogada com um tempo de estabilização de $350\text{ms}$ para a animação da seta sair.
+
+#### Alterações Detalhadas Efetuadas:
+1. **Otimização do Loop em `src/bot.py`:**
+   - O método `run_step(single_move=True)` passa a executar **apenas 1 movimento validado por ciclo**, seguido de uma pausa de $0.35\text{s}$ para a animação do jogo terminar.
+   - O loop principal `run_loop` faz a re-captura imediata do ecrã no ciclo seguinte para re-analisar o tabuleiro com 100% de dados visuais frescos.
+   - O motor de *panning* e *stitching* passa a estar **desativado por defeito** em modo live (só é ativado se o utilizador passar explicitamente a flag `--pan`).
+
+2. **Resultados e Validação:**
+   - 10/10 testes unitários aprovados (`OK`).
+   - Teste CLI em modo fixture (`live_bug_level.png`): deteta 48 setas, executa 1 toque por ciclo com validação de máscara e 0 stitching/pans acionados.
