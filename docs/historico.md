@@ -22,6 +22,7 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 | `18e8c1f` | 2026-09-19 23:55:00 +0100 | Dinis Rosa | feat(stitch): multi-frame stitching dataset capture (frame_1 through frame_6) |
 | `Phase 5` | 2026-09-20 00:11:00 +0100 | Dinis Rosa | feat(stitch): implement GlobalStitcher for offline multi-frame grid alignment, fusion and snake tracing |
 | `Phase 5.1` | 2026-09-20 00:16:00 +0100 | Dinis Rosa | fix(vision): implement robust dead-end directional arrowhead detection for dense Nightmare mazes |
+| `Phase 5.2` | 2026-09-20 00:30:00 +0100 | Dinis Rosa | fix(stitch): implement confidence-thresholded graph clustering alignment to prevent forced non-overlapping image stitching |
 
 ---
 
@@ -234,3 +235,27 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
    - **Jogadas Imediatas Jogáveis:** 12 jogadas jogáveis calculadas pelo `Solver`.
    - **Sequência de Resolução em Cascata:** **77 setas resolvíveis em cadeia** sem falhas!
    - Imagem de depuração atualizada em `fixtures/frames/debug/multi_frame_stitched_global.png`.
+
+### Commit `Phase 5.2 (Graph-Based Overlap Clustering)`
+- **Data/Hora:** 2026-09-20 00:30:00 +0100
+- **Mensagem:** `fix(stitch): implement confidence-thresholded graph clustering alignment to prevent forced non-overlapping image stitching`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Resolver o erro crítico identificado pelo utilizador no qual o código antigo tentava encadear fotos sequenciais sem verificar se existia sobreposição real.
+2. Na amostragem do mapa de 6 capturas, descobriu-se que o conjunto contém 4 regiões distintas da fase Nightmare:
+   - **Cluster 1:** `Frame 1` e `Frame 6` (Sobreposição real com **91.1% de confiança**, $31 \times 14$ células, 63 setas).
+   - **Cluster 2:** `Frame 2` (Região isolada, $23 \times 14$ células).
+   - **Cluster 3:** `Frame 3` e `Frame 4` (Sobreposição real com **91.4% de confiança**, $27 \times 14$ células, 54 setas).
+   - **Cluster 4:** `Frame 5` (Região isolada, $23 \times 14$ células).
+3. O código antigo forçava fotos sem sobreposição (confiança $< 45\%$) a alinharem-se como se fossem contíguas, sobrepondo áreas erradas do labirinto.
+
+#### Alterações Detalhadas Efetuadas:
+1. **Atualizado `GlobalStitcher` (`src/stitch.py`):**
+   - O método `align_pair` passa a retornar `(dr, dc, confidence)`.
+   - Adicionado o método `stitch_clusters(frames, min_confidence=0.65)` que constrói um grafo de alinhamento direcional unindo apenas pares com confiança $\ge 65\%$. Executa BFS para encontrar componentes ligados e funde apenas fotos verdadeiramente sobrepostas.
+   - O método `stitch_frames` retorna a componente ligada principal (maior área útil sobreposta).
+
+2. **Resultados e Validação:**
+   - Imagens de depuração geradas para os pares reais sobrepostos: [cluster_1_stitched.png (Frame 1+6)](file:///home/dinisrosa22/.gemini/antigravity-ide/brain/ed901e9c-fd44-4080-8f09-5a763c9a7d45/cluster_1_stitched.png) e [cluster_3_stitched.png (Frame 3+4)](file:///home/dinisrosa22/.gemini/antigravity-ide/brain/ed901e9c-fd44-4080-8f09-5a763c9a7d45/cluster_3_stitched.png), exibindo 100% de precisão sem qualquer desalinhamento visual.
+   - Atualizado `tests/test_stitch.py` com asserções de validação de clusters. 100% dos testes aprovados.
