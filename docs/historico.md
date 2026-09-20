@@ -331,3 +331,29 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 2. **Resultados no Tabuleiro:**
    - Falsos positivos reduzidos de 425 candidatos (com dezenas de curvas falsas) para **exatamente 49 cabeças reais de setas**!
    - As 2 jogadas calculadas no `screenshot_1` passaram a ser **100% setas verdadeiras livres desimpedidas que saem diretamente do tabuleiro com 0 perda de vidas**.
+
+### Commit `Phase 5a.3 (Single-Frame Level Border Detection & BoardMask Tap Validation)`
+- **Data/Hora:** 2026-09-20 02:12:00 +0100
+- **Mensagem:** `fix(bot, pan): enforce strict BoardMask allowed tap validation and 1-line margin border detection for single-frame levels`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Resolver a anomalia em níveis pequenos que cabem 100% num único ecrã sem necessidade de varredura (*panning*) ou colagem (*stitching*).
+2. Corrigir o problema de toques efetuados na barra branca no topo do ecrã (`y = 0`) causados por desfasamentos no mapeamento de coordenadas globais do *stitching*.
+3. Garantir que níveis contidos no ecrã atual desativam 100% o motor de *stitching* e *panning*, executando apenas jogadas locais validadas pela máscara visual do tabuleiro (`BoardMask`).
+
+#### Alterações Detalhadas Efetuadas:
+1. **Regra de Borda Exterior de 1 Linha (`src/pan.py`):**
+   - Atualizada a função `check_borders` para verificar se as linhas/colunas exteriores (`row 0`, `row -1`, `col 0`, `col -1`) estão livres.
+   - Em níveis pequenos (como o nível do utilizador), o bot deteta imediatamente todas as 4 bordas como alcançadas (`Borders found: [UP, DOWN, LEFT, RIGHT]`), abortando qualquer tentativa de *panning* ou *stitching*.
+
+2. **Validação Obrigatória de Toque por Máscara (`src/bot.py`):**
+   - Adicionada a validação `self.mask.is_allowed_tap(tap_x, tap_y)` e `geom.min_y <= tap_y <= geom.max_y` em **todas** as execuções de toque (`execute_move` e `tap`).
+   - Se uma coordenada calculada recair fora da área azul da máscara de jogo (como a barra branca de status no topo `y < 330`), o toque é rejeitado e ignorado imediatamente.
+
+3. **Resultados e Validação:**
+   - Suite de testes unitários: 10/10 testes aprovados (`OK`).
+   - Teste na captura do utilizador (`live_bug_level.png`):
+     - **Detetadas:** 48 setas, 20 jogadas locais no ecrã visível.
+     - **Bordas:** `[UP, DOWN, LEFT, RIGHT]` detetadas no 1º frame (0 *panning*, 0 *stitching*).
+     - **Toques:** 100% das 20 jogadas efetuadas estritamente na área jogável ($y \in [358..974]$), com **0 toques em espaço branco**.

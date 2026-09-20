@@ -66,37 +66,33 @@ class PanController:
         if rows < 3 or cols < 3:
             return self.borders_detected
 
-        # Check LEFT border: columns 0, 1, 2
+        # Check LEFT border: column 0 empty
         left_empty = all(
-            grid[r][c].cell_type != CellType.OCCUPIED
+            grid[r][0].cell_type != CellType.OCCUPIED
             for r in range(rows)
-            for c in range(min(3, cols))
         )
         if left_empty:
             self.borders_detected[Direction.LEFT] = True
 
-        # Check RIGHT border: last 3 columns
+        # Check RIGHT border: last column empty
         right_empty = all(
-            grid[r][c].cell_type != CellType.OCCUPIED
+            grid[r][cols - 1].cell_type != CellType.OCCUPIED
             for r in range(rows)
-            for c in range(max(0, cols - 3), cols)
         )
         if right_empty:
             self.borders_detected[Direction.RIGHT] = True
 
-        # Check TOP border: rows 0, 1, 2
+        # Check TOP border: row 0 empty
         top_empty = all(
-            grid[r][c].cell_type != CellType.OCCUPIED
-            for r in range(min(3, rows))
+            grid[0][c].cell_type != CellType.OCCUPIED
             for c in range(cols)
         )
         if top_empty:
             self.borders_detected[Direction.UP] = True
 
-        # Check BOTTOM border: last 3 rows
+        # Check BOTTOM border: last row empty
         bottom_empty = all(
-            grid[r][c].cell_type != CellType.OCCUPIED
-            for r in range(max(0, rows - 3), rows)
+            grid[rows - 1][c].cell_type != CellType.OCCUPIED
             for c in range(cols)
         )
         if bottom_empty:

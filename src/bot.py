@@ -66,9 +66,12 @@ class AutoArrowsBot:
         if len(moves) > 0:
             print(f"[Bot] Found {len(moves)} playable moves on current view.")
             # Execute playable moves with spatial locality
+            executed_count = 0
             for move in moves:
-                self.actuator.execute_move(move, delay_after=0.05)
-            return len(moves)
+                if self.mask.is_allowed_tap(move.tap_x_px, move.tap_y_px) and geom.min_y <= move.tap_y_px <= geom.max_y:
+                    self.actuator.execute_move(move, delay_after=0.05)
+                    executed_count += 1
+            return executed_count
 
         # Step 5: If no local moves exist, trigger adaptive smart pan sweep if borders remain
         if not self.pan_controller.is_all_borders_found():
@@ -95,8 +98,9 @@ class AutoArrowsBot:
                             if 0 <= r_screen < geom.rows and 0 <= c_screen < geom.cols:
                                 tap_x = geom.min_x + c_screen * geom.pitch
                                 tap_y = geom.min_y + r_screen * geom.pitch
-                                self.actuator.tap(tap_x, tap_y)
-                                executed_count += 1
+                                if self.mask.is_allowed_tap(tap_x, tap_y) and geom.min_y <= tap_y <= geom.max_y:
+                                    self.actuator.tap(tap_x, tap_y)
+                                    executed_count += 1
                         return executed_count if executed_count > 0 else len(stitched_moves)
         else:
             print("[Bot] All 4 level borders reached and no more moves available.")
