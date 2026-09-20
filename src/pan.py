@@ -128,20 +128,21 @@ class PanController:
         center_y = self.height // 2
         shift_px = pan_cells * pitch
 
-        # Gesture drag direction is opposite to camera motion:
-        # To view content on the RIGHT, drag screen to the LEFT
+        margin_x = 50
+        margin_y = 150
+
         if direction == Direction.RIGHT:
-            x1, y1 = center_x + shift_px // 2, center_y
-            x2, y2 = center_x - shift_px // 2, center_y
+            x1, y1 = self.width - margin_x, center_y
+            x2, y2 = margin_x, center_y
         elif direction == Direction.LEFT:
-            x1, y1 = center_x - shift_px // 2, center_y
-            x2, y2 = center_x + shift_px // 2, center_y
+            x1, y1 = margin_x, center_y
+            x2, y2 = self.width - margin_x, center_y
         elif direction == Direction.DOWN:
-            x1, y1 = center_x, center_y + shift_px // 2
-            x2, y2 = center_x, center_y - shift_px // 2
+            x1, y1 = center_x, self.height - margin_y
+            x2, y2 = center_x, margin_y
         elif direction == Direction.UP:
-            x1, y1 = center_x, center_y - shift_px // 2
-            x2, y2 = center_x, center_y + shift_px // 2
+            x1, y1 = center_x, margin_y
+            x2, y2 = center_x, self.height - margin_y
         else:
             return False
 

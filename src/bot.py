@@ -84,9 +84,20 @@ class AutoArrowsBot:
                     stitched_moves = Solver.playable_moves(primary_cluster.grid, primary_cluster.heads)
                     print(f"[Bot] Stitched global grid ({primary_cluster.global_rows}x{primary_cluster.global_cols}). Found {len(stitched_moves)} playable moves on stitched board.")
                     if len(stitched_moves) > 0:
-                        for move in stitched_moves[:1]:
-                            self.actuator.execute_move(move, delay_after=0.05)
-                        return len(stitched_moves)
+                        # Find tap coordinate on current visible screen frame
+                        latest_idx = primary_cluster.frame_indices[-1]
+                        r_off, c_off = primary_cluster.frame_offsets[-1]
+                        
+                        executed_count = 0
+                        for m in stitched_moves:
+                            r_screen = m.head.row - r_off
+                            c_screen = m.head.col - c_off
+                            if 0 <= r_screen < geom.rows and 0 <= c_screen < geom.cols:
+                                tap_x = geom.min_x + c_screen * geom.pitch
+                                tap_y = geom.min_y + r_screen * geom.pitch
+                                self.actuator.tap(tap_x, tap_y)
+                                executed_count += 1
+                        return executed_count if executed_count > 0 else len(stitched_moves)
         else:
             print("[Bot] All 4 level borders reached and no more moves available.")
 

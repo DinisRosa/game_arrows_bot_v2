@@ -24,6 +24,7 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 | `Phase 5.1` | 2026-09-20 00:16:00 +0100 | Dinis Rosa | fix(vision): implement robust dead-end directional arrowhead detection for dense Nightmare mazes |
 | `Phase 5.2` | 2026-09-20 00:30:00 +0100 | Dinis Rosa | fix(stitch): implement confidence-thresholded graph clustering alignment to prevent forced non-overlapping image stitching |
 | `Phase 5a` | 2026-09-20 00:46:00 +0100 | Dinis Rosa | feat(pan): implement Smart Boundary-Aware Pan Sweeping Engine with 3-line white space rule and 120ms fast swipes |
+| `Phase 5a.1` | 2026-09-20 00:50:00 +0100 | Dinis Rosa | fix(pan, bot): clamp swipe coordinates within physical screen margins and map global stitched moves to visible viewport |
 
 ---
 
@@ -288,3 +289,25 @@ Este documento serve como enciclopédia e registo cronológico detalhado de toda
 4. **Suite de Testes (`tests/test_pan.py`):**
    - Criados testes unitários para a regra das 3 colunas brancas, poda de bordas e swipes rápidos.
    - **Resultado:** 100% dos 10 testes unitários do projeto aprovados com sucesso.
+
+### Commit `Phase 5a.1 (Screen Bounds & Viewport Mapping Fixes)`
+- **Data/Hora:** 2026-09-20 00:50:00 +0100
+- **Mensagem:** `fix(pan, bot): clamp swipe coordinates within physical screen margins and map global stitched moves to visible viewport`
+- **Autor:** Dinis Rosa
+
+#### Motivação e Objetivos:
+1. Resolver duas anomalias identificadas durante a execução do bot ao vivo no telemóvel:
+   - Coordenadas de deslize ADB negativas (`x2 = -56`) devido à ausência de limitação (*clamping*) na largura do ecrã.
+   - Mapeamento de toques em grelhas globais fundidas a apontar para `y = 0` por não estarem projetados para o fotograma atualmente visível no telemóvel.
+
+#### Alterações Detalhadas Efetuadas:
+1. **Otimização de Coordenadas de Swipe (`src/pan.py`):**
+   - Atualizado o método `PanController.pan` para limitar estritamente as coordenadas de deslize dentro da área ativa do ecrã com margens de segurança (`margin_x=50`, `margin_y=150`), garantindo que o ADB recebe coordenadas reais dentro de `[50..550]` e `[150..1182]`.
+
+2. **Mapeamento de Coordenadas Globais $\rightarrow$ Ecrã Visível (`src/bot.py`):**
+   - Atualizado o `AutoArrowsBot.run_step` para calcular a posição relativa do toque no ecrã ativo `(r_screen, c_screen) = (r_global - r_offset_latest, c_global - c_offset_latest)`.
+   - Se o movimento estiver visível no ecrã atual ($0 \le r_{\text{screen}} < \text{rows}$ e $0 \le c_{\text{screen}} < \text{cols}$), projeta a coordenada física real de toque `(tap_x, tap_y)` em pixels do telemóvel.
+
+3. **Resultados e Validação:**
+   - 100% dos 10 testes unitários aprovados (`OK`).
+   - Execução CLI em modo `--dry-run` a gerar coordenadas válidas `Swipe (550, 666) -> (50, 666)` e toques projetados corretamente.
